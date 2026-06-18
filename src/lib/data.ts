@@ -1,14 +1,31 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Habit, CheckIn, Milestone, JournalEntry, Settings } from "@/types/database";
 
-/** All of a user's live (non-archived) workflows, oldest first. */
+/**
+ * All of a user's live (non-archived) workflows, oldest first.
+ *
+ * Important: a genuine query error (e.g. a migration that hasn't been run
+ * yet, so the `archived_at` column doesn't exist) must NOT be treated the
+ * same as "this user has zero workflows." Every onboarding/redirect check
+ * in the app uses this function to decide whether to send someone to
+ * `/onboarding` — silently swallowing an error here previously caused an
+ * infinite "create a workflow → bounced back to onboarding" loop, because
+ * the failed query always looked like an empty result. Now we throw, which
+ * surfaces a real error page instead of a confusing redirect loop.
+ */
 export async function getUserHabits(supabase: SupabaseClient, userId: string): Promise<Habit[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("habits")
     .select("*")
     .eq("user_id", userId)
     .is("archived_at", null)
     .order("created_at", { ascending: true });
+  if (error) {
+    throw new Error(
+      `Failed to load workflows (${error.message}). If you recently upgraded, make sure ` +
+        "supabase/migrations/0002_multi_habit.sql has been run."
+    );
+  }
   return (data ?? []) as Habit[];
 }
 

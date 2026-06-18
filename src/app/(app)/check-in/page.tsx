@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createClient } from "@/lib/supabase/client";
+import { getUserHabits } from "@/lib/data";
 import { checkInSchema, type CheckInInput } from "@/lib/validations";
 import { MOOD_OPTIONS, TRIGGER_OPTIONS } from "@/lib/constants";
 import { computeStreakStats } from "@/lib/streaks";
@@ -62,13 +63,14 @@ export default function CheckInPage() {
         router.replace("/login");
         return;
       }
-      const { data: liveHabits } = await supabase
-        .from("habits")
-        .select("*")
-        .eq("user_id", userRes.user.id)
-        .is("archived_at", null)
-        .order("created_at", { ascending: true });
-      const habits = (liveHabits ?? []) as Habit[];
+      let habits: Habit[];
+      try {
+        habits = await getUserHabits(supabase, userRes.user.id);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to load your workflows.");
+        setLoading(false);
+        return;
+      }
       if (habits.length === 0) {
         router.replace("/onboarding");
         return;
@@ -218,6 +220,10 @@ export default function CheckInPage() {
 
   if (loading) {
     return <div className="py-20 text-center text-sm text-muted-foreground">Loading…</div>;
+  }
+
+  if (error && !habit) {
+    return <div className="py-20 text-center text-sm text-destructive">{error}</div>;
   }
 
   return (

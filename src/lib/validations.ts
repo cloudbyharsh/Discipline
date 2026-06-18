@@ -44,3 +44,14 @@ export const workflowSchema = z.object({
   motivation_text: z.string().min(1, "This helps us remind you why you started.").max(2000),
 });
 export type WorkflowInput = z.infer<typeof workflowSchema>;
+
+// Structured output contract for the AI Coach. The LLM is instructed to
+// return exactly this shape; anything that fails this schema is treated as
+// a failed generation (see app/api/ai-coach/route.ts) rather than rendered.
+export const aiCoachResponseSchema = z.object({
+  headline: z.string().min(1).max(80),
+  insight: z.string().min(1).max(1000),
+  risk_level: z.enum(["low", "medium", "high"]),
+  suggested_action: z.string().min(1).max(400),
+});
+export type AICoachResponse = z.infer<typeof aiCoachResponseSchema>;

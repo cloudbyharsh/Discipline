@@ -6,6 +6,7 @@ import { getHabitDisplayName } from "@/lib/habit-display";
 import { computeStreakStats, nextMilestoneDay } from "@/lib/streaks";
 import { StreakStatCard } from "@/components/shared/streak-stat-card";
 import { MoodTrendChart } from "@/components/shared/mood-trend-chart";
+import { CreateWorkflowDialog } from "@/components/shared/create-workflow-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { buttonVariants } from "@/components/ui/button";
@@ -60,9 +61,12 @@ export default async function DashboardPage() {
           <h1 className="text-2xl font-semibold">Welcome back</h1>
           <p className="text-sm text-muted-foreground">Working on: {getHabitDisplayName(habit)}</p>
         </div>
-        <Link href="/check-in" className={buttonVariants({ size: "lg" })}>
-          {checkedInToday ? "Update today's check-in" : "Quick check-in"}
-        </Link>
+        <div className="flex items-center gap-2">
+          <CreateWorkflowDialog habitsCount={habits.length} triggerLabel="Add workflow" variant="outline" />
+          <Link href="/check-in" className={buttonVariants({ size: "lg" })}>
+            {checkedInToday ? "Update today's check-in" : "Quick check-in"}
+          </Link>
+        </div>
       </div>
 
       {habits.length > 1 && (

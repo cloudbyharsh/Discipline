@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getUserHabits } from "@/lib/data";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -7,13 +8,7 @@ export default async function Home() {
 
   if (!user) redirect("/login");
 
-  const { data: habit } = await supabase
-    .from("habits")
-    .select("id")
-    .eq("user_id", user.id)
-    .is("archived_at", null)
-    .limit(1)
-    .maybeSingle();
+  const habits = await getUserHabits(supabase, user.id);
 
-  redirect(habit ? "/dashboard" : "/onboarding");
+  redirect(habits.length > 0 ? "/dashboard" : "/onboarding");
 }

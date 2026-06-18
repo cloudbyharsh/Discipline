@@ -1,7 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getUserHabits } from "@/lib/data";
 import { HABIT_OPTIONS, GOAL_OPTIONS, TARGET_DAY_OPTIONS } from "@/lib/constants";
 import type { HabitType, GoalType } from "@/types/database";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,12 @@ const STEPS = ["habit", "goal", "target", "why"] as const;
 
 export default function OnboardingPage() {
   const router = useRouter();
+  // Onboarding has a one-time completion state: once a user has at least
+  // one workflow, this flow is "done" and should never be re-entered
+  // automatically. If someone lands here after already onboarding (e.g. a
+  // stale bookmark or browser back button), send them straight to the
+  // dashboard instead of letting them create a duplicate first workflow.
+  const [checkingExisting, setCheckingExisting] = useState(true);
   const [stepIndex, setStepIndex] = useState(0);
   const [habitType, setHabitType] = useState<HabitType | null>(null);
   const [customName, setCustomName] = useState("");
@@ -24,6 +31,28 @@ export default function OnboardingPage() {
   const [motivation, setMotivation] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setCheckingExisting(false);
+        return;
+      }
+      try {
+        const existing = await getUserHabits(supabase, user.id);
+        if (existing.length > 0) {
+          router.replace("/dashboard");
+          return;
+        }
+      } catch {
+        // If the check itself fails, fall through and let the user
+        // attempt onboarding rather than getting stuck on a blank screen.
+      }
+      setCheckingExisting(false);
+    })();
+  }, [router]);
 
   const step = STEPS[stepIndex];
   const progressPct = Math.round(((stepIndex + 1) / STEPS.length) * 100);
@@ -73,6 +102,10 @@ export default function OnboardingPage() {
     } else {
       setStepIndex((i) => i + 1);
     }
+  }
+
+  if (checkingExisting) {
+    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>;
   }
 
   return (
